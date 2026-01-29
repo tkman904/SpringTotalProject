@@ -58,7 +58,7 @@ pipeline {
 				}
 			}
 		 }
-		 
+		 		 
 		 // 실행 명령
 		 stage('Run Application') {
 			steps {
