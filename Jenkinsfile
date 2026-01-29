@@ -8,7 +8,7 @@ pipeline {
 	   EC2_USER = "ubuntu"
 	   COMPOSE_FILE = "~/app/docker-compose.yml"
 	}
-	
+
     stages {
 		// GIT 연결 => 주소
         stage('Checkout') {
