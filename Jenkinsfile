@@ -62,7 +62,7 @@ pipeline {
 		 
 		 // 실행 명령
 		 stage('Run Application') {
-			setps {
+			steps {
 				sshagent(credentials:['SERVER_SSH_KEY']) {
 					sh '''
 					    ssh -o StrictHostKeyChecking=no ${SERVER_USER}@{SERVER_IP} << 'EOF'
