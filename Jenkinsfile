@@ -5,7 +5,8 @@ pipeline {
 	   DOCKER_IMAGE = "cheol0904/total-app"
 	   DOCKER_TAG = "latest"
 	   EC2_HOST = "15.164.97.191"
-	   EC2_USER = "ubuntu"	
+	   EC2_USER = "ubuntu"
+	   COMPOSE_FILE = "docker-compose.yml"
 	}
 	
     stages {
@@ -53,7 +54,7 @@ pipeline {
 			}
 		}
 	
-		stage('Deploy to EC2') {
+		/*stage('Deploy to EC2') {
 			steps {
 			  // Manage => SSH Agent 설치 = jenkins 다시 실행 
 			  sshagent(credentials: ['SERVER_SSH_KEY']) {
@@ -67,7 +68,52 @@ EOF
 				   """
 			  }
 			}
+		}*/
+		
+		stage('Docker Compose Down') {
+			steps {
+				echo 'docker-compose down'
+				sh '''
+				     docker-compose -f ${COMPOSE_FILE} down || true
+				   '''
+			}
 		}
+		
+		stage('Docker Stop And RM'){
+			steps {
+				echo 'docker stop rm'
+				sh '''
+				    docker stop total-app || true
+				    docker rm total-app || true
+				    docker pull ${DOCKER_IMAGE}
+				   '''
+			}
+		}
+		
+		stage('Docker Compose UP') {
+			steps {
+				echo 'docker-compose up'
+				sh '''
+				    docker-compose -f ${COMPOSE_FILE} up -d
+				   '''
+			}
+		}
+		
+/*		stage('Docker Run') {
+			steps {
+				echo 'Docker Run'
+				sh '''
+				    docker stop ${CONTAINER_NAME} || true
+				    docker rm ${CONTAINER_NAME} || true
+				    
+				    docker pull ${IMAGE_NAME}
+				    
+				    docker run --name ${CONTAINER_NAME} \
+				    -it -d -p 9090:9090 \
+				    ${IMAGE_NAME}
+				   '''
+			}
+		}*/
     }
     
     post {
