@@ -52,7 +52,7 @@ pipeline {
 				}
 			}
 		}
-		
+
 		stage('Deploy to EC2') {
 			steps {
 			  // Manage => SSH Agent 설치 = jenkins 다시 실행 
