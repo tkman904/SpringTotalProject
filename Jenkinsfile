@@ -6,7 +6,7 @@ pipeline {
 	   DOCKER_TAG = "latest"
 	   EC2_HOST = "15.164.97.191"
 	   EC2_USER = "ubuntu"
-	   COMPOSE_FILE = "docker-compose.yml"
+	   COMPOSE_FILE = "~/app/docker-compose.yml"
 	}
 	
     stages {
