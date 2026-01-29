@@ -33,18 +33,18 @@ pipeline {
 		 // gradle build => war파일을 다시 생성
 		 stage('Gradle Permission') {
 			steps {
-				sh '''
+				sh """
 				   	chmod +x gradlew
-				   '''
+				   """
 			}
 		 }
 		 
 		 // build 시작
 		 stage('Gradle Build') {
 			steps {
-				sh '''
+				sh """
 				    ./gradlew clean build
-				   '''
+				   """
 			}
 		 }
 		 
@@ -52,10 +52,9 @@ pipeline {
 		 stage('Deploy = rsync') {
 			steps {
 				sshagent(credentials:['SERVER_SSH_KEY']) {
-					sh '''
-					    rsync -avz -e "ssh -o StrictHostKeyChecking=no" \
-					    build/libs/*.war ${SERVER_USER}@${SERVER_IP}:${APP_DIR}
-					   '''
+					sh """
+					    rsync -avz -e "ssh -o StrictHostKeyChecking=no" build/libs/*.war ${SERVER_USER}@${SERVER_IP}:${APP_DIR}
+					   """
 				}
 			}
 		 }
@@ -64,12 +63,12 @@ pipeline {
 		 stage('Run Application') {
 			steps {
 				sshagent(credentials:['SERVER_SSH_KEY']) {
-					sh '''
+					sh """
 					    ssh -o StrictHostKeyChecking=no ${SERVER_USER}@{SERVER_IP} << 'EOF'
 					      pkill -f 'java -jar' || true
 					      nohup java -jar ${APP_DIR}/${JAR_NAME} > log.txt 2>&1 &
 					    EOF
-					   '''
+					   """
 				}
 			}
 		 }
