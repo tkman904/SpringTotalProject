@@ -2,80 +2,80 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_USER = credentials('DOCKERHUB_USERNAME')
-        DOCKERHUB_PASS = credentials('DOCKERHUB_PASSWORD')
-
-        SERVER_IP   = '15.164.97.191'
-        SERVER_USER = 'ubuntu'
-
-        IMAGE_NAME  = 'cheol0904/total-app'
-        CONTAINER   = 'total-app'
-        PORT        = '9090'
-    }
-
+	   DOCKER_IMAGE = "cheol0904/total-app"
+	   DOCKER_TAG = "latest"
+	   EC2_HOST = "15.164.97.191"
+	   EC2_USER = "ubuntu"	
+	}
+	
     stages {
-		// scm 설정 읽기
+		// GIT 연결 => 주소
         stage('Checkout') {
             steps {
-				echo 'Git Checkout'
-				checkout scm
+                echo 'Git Checkout'
+                checkout scm
             }
         }
+        // 배포판 만들기 
+        stage('Gradlew Build') {
+			steps {
+				echo 'Gradle Build'
+				sh '''
+				    chmod +x gradlew
+				    ./gradlew clean build -x test
+				   '''
+			}
+		}
 		
-		// 권한 부여
-        stage('Grant Gradle Permission') {
-            steps {
-                sh 'chmod +x gradlew'
-            }
-        }
+		stage('Docker Build') {
+			steps {
+				echo 'Docker Image Build'
+				sh '''
+				    docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
+				   '''
+			}
+		}
 		
-		// gradlew build
-        stage('Build War') {
-            steps {
-                sh './gradlew clean build'
-            }
-        }
-
-        stage('Docker Login') {
-            steps {
-                sh '''
-                echo $DOCKERHUB_PASS | docker login -u $DOCKERHUB_USER --password-stdin
-                '''
-            }
-        }
-
-        stage('Build & Push Docker Image') {
-            steps {
-                sh '''
-                docker build -t $DOCKERHUB_USER/${IMAGE_NAME}:latest .
-                docker push $DOCKERHUB_USER/${IMAGE_NAME}:latest
-                '''
-            }
-        }
-
-        stage('Deploy to Ubuntu Server') {
-            steps {
-                sshagent(credentials: ['SERVER_SSH_KEY']) {
-                    sh """
-                    ssh -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER_IP} << EOF
-                        docker stop ${CONTAINER} || true
-                        docker rm ${CONTAINER} || true
-                        docker pull $DOCKERHUB_USER/${IMAGE_NAME}:latest
-                        docker run -d --name ${CONTAINER} -p ${PORT}:${PORT} \
-                          $DOCKERHUB_USER/${IMAGE_NAME}:latest
-EOF
-                    """
-                }
-            }
-        }
+		stage('Docker Hub Login') {
+			steps {
+				echo 'DockerHub Login'
+				withCredentials([usernamePassword(
+					credentialsId: 'dockerhub_config',
+					usernameVariable: 'DOCKER_ID',
+					passwordVariable: 'DOCKER_PW'
+				)]){
+					sh '''
+					   echo "DOCKER_ID=$DOCKER_ID,DOCKER_PW=$DOCKER_PW"
+					   echo "$DOCKER_PW" | docker login -u "$DOCKER_ID" --password-stdin
+					   docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+					   '''
+				}
+			}
+		}
+		
+		stage('Deploy to EC2') {
+			steps {
+			  // Manage => SSH Agent 설치 = jenkins 다시 실행 
+			  sshagent(credentials: ['SERVER_SSH_KEY']) {
+				sh """
+				   ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} << EOF
+				       docker stop total-app || true
+				       docker rm total-app || true
+				       docker pull ${DOCKER_IMAGE}:${DOCKER_TAG}
+				       docker run --name total-app -it -d -p 9090:9090 ${DOCKER_IMAGE}:${DOCKER_TAG}
+				   EOF
+				   """
+			  }
+			}
+		}
     }
-
+    
     post {
-        success {
-            echo 'Docker Deploy Success'
-        }
-        failure {
-            echo 'Docker Deploy Failed'
-        }
-    }
+		success {
+			echo 'CI/CD 실행 성공'
+		}
+		failure {
+			echo 'CI/CD 실행 실패'
+		}
+	}
 }
