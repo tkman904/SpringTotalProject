@@ -1,76 +1,81 @@
 pipeline {
-	agent any
-	
-	// 전역변수 => ${}
-	environment {
-		SERVER_IP = "15.164.97.191"
-		SERVER_USER = "ubuntu"
-		APP_DIR = "~/app"
-		JAR_NAME = "SpringTotalProject-0.0.1-SNAPSHOT.war"
-	}
-	stages {
-		/*
-			연결 확인 = ngrok
-			stage('Check Git Info') {
-				steps {
-					sh '''
-						echo "===Git Info==="
-						git branch
-						git log -1
-					   '''
-				}
-			}
-		 */
-		 
-		 // 감지 = main : push (commit)
-		 stage('Check Out') {
-			steps {
+    agent any
+
+    environment {
+        DOCKERHUB_USER = credentials('DOCKERHUB_USERNAME')
+        DOCKERHUB_PASS = credentials('DOCKERHUB_PASSWORD')
+
+        SERVER_IP   = '15.164.97.191'
+        SERVER_USER = 'ubuntu'
+
+        IMAGE_NAME  = 'cheol0904/total-app'
+        CONTAINER   = 'total-app'
+        PORT        = '9090'
+    }
+
+    stages {
+		// scm 설정 읽기
+        stage('Checkout') {
+            steps {
 				echo 'Git Checkout'
 				checkout scm
-			}
-		 }
-		 
-		 // gradle build => war파일을 다시 생성
-		 stage('Gradle Permission') {
-			steps {
-				sh """
-				   	chmod +x gradlew
-				   """
-			}
-		 }
-		 
-		 // build 시작
-		 stage('Gradle Build') {
-			steps {
-				sh """
-				    ./gradlew clean build
-				   """
-			}
-		 }
-		 
-		 // war파일 전송 = rsync / scp
-		 stage('Deploy = rsync') {
-			steps {
-				sshagent(credentials:['SERVER_SSH_KEY']) {
-					sh """
-					    rsync -avz -e 'ssh -o StrictHostKeyChecking=no' build/libs/*.war ${SERVER_USER}@${SERVER_IP}:${APP_DIR}
-					   """
-				}
-			}
-		 }
-		 		 
-		 // 실행 명령
-		 stage('Run Application') {
-			steps {
-				sshagent(credentials:['SERVER_SSH_KEY']) {
-					sh """
-					    ssh -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER_IP} << EOF
-					      pkill -f 'java -jar' || true
-					      nohup java -jar ${APP_DIR}/${JAR_NAME} > log.txt 2>&1 &
+            }
+        }
+		
+		// 권한 부여
+        stage('Grant Gradle Permission') {
+            steps {
+                sh 'chmod +x gradlew'
+            }
+        }
+		
+		// gradlew build
+        stage('Build War') {
+            steps {
+                sh './gradlew clean build'
+            }
+        }
+
+        stage('Docker Login') {
+            steps {
+                sh '''
+                echo $DOCKERHUB_PASS | docker login -u $DOCKERHUB_USER --password-stdin
+                '''
+            }
+        }
+
+        stage('Build & Push Docker Image') {
+            steps {
+                sh '''
+                docker build -t $DOCKERHUB_USER/${IMAGE_NAME}:latest .
+                docker push $DOCKERHUB_USER/${IMAGE_NAME}:latest
+                '''
+            }
+        }
+
+        stage('Deploy to Ubuntu Server') {
+            steps {
+                sshagent(credentials: ['SERVER_SSH_KEY']) {
+                    sh """
+                    ssh -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER_IP} << EOF
+                        docker stop ${CONTAINER} || true
+                        docker rm ${CONTAINER} || true
+                        docker pull $DOCKERHUB_USER/${IMAGE_NAME}:latest
+                        docker run -d --name ${CONTAINER} -p ${PORT}:${PORT} \
+                          $DOCKERHUB_USER/${IMAGE_NAME}:latest
 EOF
-					   """
-				}
-			}
-		 }
-	}
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Docker Deploy Success'
+        }
+        failure {
+            echo 'Docker Deploy Failed'
+        }
+    }
 }
