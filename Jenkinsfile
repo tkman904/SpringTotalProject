@@ -25,8 +25,8 @@ pipeline {
 		 // 감지 = main : push (commit)
 		 stage('Check Out') {
 			steps {
-				git branch: 'main',
-					url: 'https://github.com/tkman904/SpringTotalProject.git'
+				echo 'Git Checkout'
+				checkout scm
 			}
 		 }
 		 
