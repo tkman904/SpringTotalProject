@@ -35,7 +35,7 @@ pipeline {
                 sh '''
                     # 1. sist 계정의 config 권한이 있다면 이 경로를 직접 사용
                     # 2. deployment.yaml 경로를 sist 계정의 절대 경로로 지정
-                    kubectl --kubeconfig=/var/lib/jenkins/.kube/config apply -f k8s/deployment.yaml
+                    kubectl --kubeconfig=/var/lib/jenkins/.kube/config apply -f "$WORKSPACE/k8s/deployment.yaml"
                     
                     # 3. 아까 확인한 실제 Deployment 이름(totalapp-deployment)으로 재시작
                     kubectl --kubeconfig=${KUBECONFIG_PATH} rollout restart deployment totalapp-deployment
