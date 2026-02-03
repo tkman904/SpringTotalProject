@@ -36,7 +36,7 @@ pipeline {
 			      kubectl --kubeconfig=/var/lib/jenkins/.kube/config apply -f /home/sist/k8s/deployment.yaml
 			      kubectl --kubeconfig=/var/lib/jenkins/.kube/config rollout restart deployment totalapp-deployment
 				  kubectl --kubeconfig=/var/lib/jenkins/.kube/config get pods
-			    	'''
+			       '''
 		    }
 		}
     }
