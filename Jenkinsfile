@@ -26,7 +26,7 @@ pipeline {
         
         stage('Docker Build') {
             steps {
-                sh 'docker build -t ouxthm/total-app:latest .'
+                sh 'docker build -t cheol0904/total-app:latest .'
             }
         }
           
