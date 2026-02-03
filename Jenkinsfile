@@ -31,19 +31,27 @@ pipeline {
         }
           
         stage('Deploy to Minikube') {
-            steps {
-                sh '''
-                    # 1. sist 계정의 config 권한이 있다면 이 경로를 직접 사용
-                    # 2. deployment.yaml 경로를 sist 계정의 절대 경로로 지정
-                    kubectl --kubeconfig=/var/lib/jenkins/.kube/config apply -f "$WORKSPACE/k8s/deployment.yaml"
-                    
-                    # 3. 아까 확인한 실제 Deployment 이름(totalapp-deployment)으로 재시작
-                    kubectl --kubeconfig=${KUBECONFIG_PATH} rollout restart deployment totalapp-deployment
-                    
-                    # 4. 상태 확인
-                    kubectl --kubeconfig=${KUBECONFIG_PATH} get pods
-                '''
-            }
-        }
+		    steps {
+			    sh '''
+			      pwd
+			      ls -al
+			      ls -al k8s || true
+			
+			      echo "=== find deployment yaml ==="
+			      DEPLOY_FILE=$(find . -maxdepth 5 -type f \\( -name "deployment.yaml" -o -name "deployment.yml" \\) | head -n 1)
+			      echo "DEPLOY_FILE=$DEPLOY_FILE"
+			
+			      if [ -z "$DEPLOY_FILE" ]; then
+			        echo "deployment.yaml(.yml) 못 찾음. 레포에 파일이 없거나 경로가 다름."
+			        exit 1
+			      fi
+			
+			      kubectl --kubeconfig=/var/lib/jenkins/.kube/config apply -f "$DEPLOY_FILE"
+			
+			      kubectl --kubeconfig=${KUBECONFIG_PATH} rollout restart deployment totalapp-deployment
+			      kubectl --kubeconfig=${KUBECONFIG_PATH} get pods
+			    '''
+		    }
+		}
     }
 }
