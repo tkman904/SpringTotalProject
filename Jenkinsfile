@@ -99,8 +99,8 @@ pipeline {
 		stage('Deploy to MiniKube') {
 			steps {
 				sh '''
-					kubectl delete deployment total-app || true
-					sudo -u sist /usr/local/bin/kubectl apply -f /var/lib/jenkins/k8s/deployment.yaml
+					sudo -u sist /usr/local/bin/kubectl delete deployment totalapp-deployment || true
+					sudo -u sist /usr/local/bin/kubectl apply -f /home/sist/k8s/deployment.yaml
 					sudo -u sist /usr/local/bin/kubectl rollout restart deployment/totalapp-deployment
 					sudo -u sist /usr/local/bin/kubectl rollout status deployment/totalapp-deployment
 				   '''
