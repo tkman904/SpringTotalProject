@@ -29,7 +29,7 @@ pipeline {
                 sh 'docker build -t ouxthm/total-app:latest .'
             }
         }
-        
+          
         stage('Deploy to Minikube') {
             steps {
                 sh '''
