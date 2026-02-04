@@ -1,41 +1,12 @@
 pipeline {
 	agent any
 	
-	// 전역변수 => ${SERVER_IP}
 	environment {
 			APP_DIR = "~/app"
 			JAR_NAME = "SpringTotalProject-0.0.1-SNAPSHOT.war"
 	}
 		
 	stages {
-		/*
-			git push = commit
-			    |
-			web hooks / poll
-			    |
-			 jenkins (local)
-			    |
-			  build
-			    |
-			  docker build
-			  docker push
-			    |
-			  minikube
-			    | deployment.yaml update
-			  브라우저 실행
-		*/
-		/*
-		 연결 확인 = ngrok
-		 stage('Check Git Info') {
-			steps {
-				sh '''
-				    echo "===Git Info==="
-				    git branch
-				    git log -1
-				   '''
-			}
-		}*/
-		
 		// 감지 = main : push (commit)
 		stage('Check Out') {
 			steps {
@@ -95,28 +66,26 @@ pipeline {
 		}
 		
 		// 실행 명령 
-		
 		stage('Deploy to MiniKube') {
 			steps {
 				sh '''
 					set +e
 					
-					sudo -u sist /usr/local/bin/kubectl get ns >/dev/null 2>&1
-      				RC=$?
+					KUBECTL="sudo -u sist /usr/local/bin/kubectl"
+      				YAML="/home/sist/k8s/deployment.yaml"
+      				DEPLOY="totalapp-deployment"
       				
-      				if [ $RC -ne 0 ]; then
-			          echo "Minikube API unreachable (192.168.49.2:8443). Deploy step SKIP to let build succeed."
-			          exit 0
-			        fi
-			        
-					sudo -u sist /usr/local/bin/kubectl delete deployment totalapp-deployment || true
-					sudo -u sist /usr/local/bin/kubectl apply -f /home/sist/k8s/deployment.yaml
-					sudo -u sist /usr/local/bin/kubectl rollout restart deployment/totalapp-deployment
-					sudo -u sist /usr/local/bin/kubectl rollout status deployment/totalapp-deployment
+      				if ! $KUBECTL get ns >/dev/null 2>&1; then
+				        echo "Minikube API unreachable (192.168.49.2:8443). Deploy step SKIP to let build succeed."
+				        exit 0
+				    fi
+				    $KUBECTL apply --dry-run=client --validate=false -f "$YAML"
+				    $KUBECTL apply -f "$YAML"
+				    $KUBECTL rollout restart deployment/$DEPLOY
+				    $KUBECTL rollout status deployment/$DEPLOY --timeout=90s
 				   '''
 			}
 		}
-		
 	}
 }
 
