@@ -36,10 +36,10 @@ pipeline {
 	    stage('Deploy') {
             steps {
                 sh '''
-                echo "▶ 이전 컨테이너 종료"
+                echo "이전 컨테이너 종료"
                 docker rm -f spring-app || true
 
-                echo "▶ 새 컨테이너 실행 (latest)"
+                echo "새 컨테이너 실행"
                 docker run -d \
                   --name spring-app \
                   -p 9090:9090 \
@@ -47,7 +47,7 @@ pipeline {
                 '''
 
                 sh '''
-                echo "▶ Health Check 시작"
+                echo "Health Check 시작"
 
                 for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
                 do
@@ -55,9 +55,9 @@ pipeline {
                   echo "응답: $STATUS"
 
                   if echo "$STATUS" | grep -q UP; then
-                    echo "✅ HEALTH CHECK OK"
+                    echo "HEALTH CHECK OK"
 
-                    echo "▶ previous 이미지 갱신"
+                    echo "previous 이미지 갱신"
                     docker tag spring-app:latest spring-app:previous
 
                     exit 0
@@ -66,7 +66,7 @@ pipeline {
                   sleep 2
                 done
 
-                echo "❌ HEALTH CHECK FAIL"
+                echo "Health Check 실패"
                 exit 1
                 '''
             }
@@ -75,20 +75,20 @@ pipeline {
 
     post {
         failure {
-            echo "♻️ 자동 롤백 시작"
+            echo "자동 롤백 시작"
 
             sh '''
-            echo "▶ 실패 컨테이너 제거"
+            echo "실패한 컨테이너 제거"
             docker rm -f spring-app || true
 
             if docker image inspect spring-app:previous > /dev/null 2>&1; then
-              echo "▶ 이전 이미지로 롤백"
+              echo "이전 이미지로 롤백"
               docker run -d \
                 --name spring-app \
                 -p 9090:9090 \
                 spring-app:previous
             else
-              echo "❌ 롤백할 이미지 없음 (최초 배포)"
+              echo "롤백할 이미지 없음 (최초 배포)"
             fi
             '''
         }
